@@ -22,9 +22,10 @@ class RegisterUser(APIView):
             data = request.data
             phone = data.get('phone')
             email = data.get('email')
+            otp = data.get('otp')
             fullname = data.get('fullname')
             profile_pic = request.FILES.get('image', None)
-            # print(phone)
+
             username = self.generate_username()
             email = str(email).lower()
             user_phone = UserProfile.objects.filter(phone=phone).first()
@@ -41,23 +42,36 @@ class RegisterUser(APIView):
             if user_email:
                 return Response({'error': True, 'status': False, 'message': "User already exists!"},
                                 status=status.HTTP_200_OK)
-            generate_otp_and_send_email(email=email)
-            # Create new user profile
-            user = UserProfile.objects.create(
-                full_name=fullname,
-                phone=phone,
-                username=username,  # Assuming 'phone' is the username
-                email=email,
-                is_active=False,
-                profile_pic=profile_pic
-            )
-            user.set_password(data.get('password'))
-            user.save()
+            # generate_otp_and_send_email(email=email)
+            print('an')
 
-            serializer = UserRegisterSerializer(user)
-            print(serializer.data)
-            return Response({'success': True, 'data': serializer.data, 'message': "Successfully Registered!"},
-                            status=status.HTTP_201_CREATED)
+            otp_obj = EmailOtp.objects.get(email=email)
+            if not otp_obj:
+                return Response({'status': False, 'message': 'OTP '}, status=status.HTTP_400_BAD_REQUEST)
+            print(otp_obj)
+            if int(otp) != int(otp_obj.otp):
+                return Response({'status': False, 'message': 'Wrong OTP'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                otp_obj = EmailOtp.objects.get(email=email)
+
+                otp_obj.delete()
+                # Create new user profile
+                user = UserProfile.objects.create(
+                    full_name=fullname,
+                    phone=phone,
+                    username=username,  # Assuming 'phone' is the username
+                    email=email,
+                    is_active=True,
+                    profile_pic=profile_pic
+                )
+                user.set_password(data.get('password'))
+                user.save()
+
+                serializer = UserRegisterSerializer(user)
+
+                return Response({'success': True, 'data': serializer.data, 'message': "Successfully Registered!"},
+                                status=status.HTTP_201_CREATED)
+
         except KeyError as e:
             raise ValidationError(f"Missing required field: {e}")
 
@@ -72,18 +86,10 @@ class RegisterUser(APIView):
 class VerifyOtp(APIView):
     def post(self, request):
         email = request.data.get('email')
-        otp = request.data.get('otp')
 
         try:
             otp_obj = EmailOtp.objects.get(email=email)
-            if int(otp) == int(otp_obj.otp):
-                user = UserProfile.objects.get(email=email)
-                user.is_active = True
-                user.save()
-                otp_obj.delete()
-                return Response({'status': True, 'message': 'OTP Verified Successfully'}, status=status.HTTP_200_OK)
-            else:
-                return Response({'status': False, 'message': 'OTP is incorrect'}, status=status.HTTP_400_BAD_REQUEST)
+            generate_otp_and_send_email(email=email)
         except EmailOtp.DoesNotExist:
             return Response({'status': False, 'message': 'OTP not found'}, status=status.HTTP_404_NOT_FOUND)
         except UserProfile.DoesNotExist:

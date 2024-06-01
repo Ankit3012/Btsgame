@@ -175,4 +175,7 @@ EMAIL_HOST_PASSWORD = 'Clickntokk@123'
 EMAIL_USE_SSL = True
 EMAIL_USE_TLS = False
 DEFAULT_FROM_EMAIL = 'support@clickntokk.com'
+CSRF_COOKIE_SECURE = True
+CSRF_TRUSTED_ORIGINS = ["https://gamebts.com"]
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
