@@ -45,14 +45,15 @@ class RegisterUser(APIView):
             # generate_otp_and_send_email(email=email)
             print('an')
 
-            otp_obj = EmailOtp.objects.get(email=email)
+            otp_obj = EmailOtp.objects.filter(email=email).last()
+
             if not otp_obj:
                 return Response({'status': False, 'message': 'OTP '}, status=status.HTTP_400_BAD_REQUEST)
             print(otp_obj)
             if int(otp) != int(otp_obj.otp):
                 return Response({'status': False, 'message': 'Wrong OTP'}, status=status.HTTP_400_BAD_REQUEST)
             else:
-                otp_obj = EmailOtp.objects.get(email=email)
+                otp_obj = EmailOtp.objects.filter(email=email).last()
 
                 otp_obj.delete()
                 # Create new user profile
@@ -88,8 +89,8 @@ class VerifyOtp(APIView):
         email = request.data.get('email')
 
         try:
-            # otp_obj = EmailOtp.objects.get(email=email)
             generate_otp_and_send_email(email=email)
+            return Response({'status': True, 'message': 'OTP Sent'}, status=status.HTTP_200_OK)
         except EmailOtp.DoesNotExist:
             return Response({'status': False, 'message': 'OTP not found'}, status=status.HTTP_404_NOT_FOUND)
         except UserProfile.DoesNotExist:
