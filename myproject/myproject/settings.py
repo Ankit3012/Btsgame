@@ -165,16 +165,17 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email Credentials
 # Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtpout.secureserver.net'
-EMAIL_PORT = 465
-EMAIL_HOST_USER = 'support@clickntokk.com'
-EMAIL_HOST_PASSWORD = 'Clickntokk@123'
-# EMAIL_HOST_USER = 'support@bitsswaps.com'
-# EMAIL_HOST_PASSWORD = 'Bitsswaps@g20'
-EMAIL_USE_SSL = True
-EMAIL_USE_TLS = False
-DEFAULT_FROM_EMAIL = 'support@clickntokk.com'
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtpout.secureserver.net'
+# EMAIL_PORT = 465
+# # EMAIL_HOST_USER = 'support@clickntokk.com'
+# # EMAIL_HOST_PASSWORD = 'Clickntokk@123'
+#
+# # EMAIL_HOST_USER = 'support@bitsswaps.com'
+# # EMAIL_HOST_PASSWORD = 'Bitsswaps@g20'
+# EMAIL_USE_SSL = True
+# EMAIL_USE_TLS = False
+# DEFAULT_FROM_EMAIL = 'info@yaksharat.com'
 CSRF_COOKIE_SECURE = True
 CSRF_TRUSTED_ORIGINS = ["https://gamebts.com"]
 
@@ -219,3 +220,14 @@ LOGGING = {
         },
     },
 }
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.hostinger.com'
+EMAIL_PORT = 587  # Use 465 for SSL
+EMAIL_USE_TLS = True  # Use True for TLS
+EMAIL_USE_SSL = False  # Use False if using TLS
+EMAIL_HOST_USER = 'info@yaksharat.com'
+EMAIL_HOST_PASSWORD = 'Info@g20'
+
+# Optionally, you can set a default from email address
+DEFAULT_FROM_EMAIL = 'info@yaksharat.com'
