@@ -89,20 +89,24 @@ class RegisterUser(APIView):
 class VerifyOtp(APIView):
     def post(self, request):
         email = request.data.get('email')
+        logger.info('success enter otp')
+        generate_otp_and_send_email(email=email)
+        logger.info('success otp')
+        return Response({'status': True, 'message': 'OTP Sent'}, status=status.HTTP_200_OK)
 
-        try:
-
-            logger.info('success enter otp')
-            generate_otp_and_send_email(email=email)
-            logger.info('success otp')
-            return Response({'status': True, 'message': 'OTP Sent'}, status=status.HTTP_200_OK)
-        except EmailOtp.DoesNotExist:
-            return Response({'status': False, 'message': 'OTP not found'}, status=status.HTTP_404_NOT_FOUND)
-        except UserProfile.DoesNotExist:
-            return Response({'status': False, 'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({'status': False, 'message': e},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # try:
+        #
+        #     logger.info('success enter otp')
+        #     generate_otp_and_send_email(email=email)
+        #     logger.info('success otp')
+        #     return Response({'status': True, 'message': 'OTP Sent'}, status=status.HTTP_200_OK)
+        # except EmailOtp.DoesNotExist:
+        #     return Response({'status': False, 'message': 'OTP not found'}, status=status.HTTP_404_NOT_FOUND)
+        # except UserProfile.DoesNotExist:
+        #     return Response({'status': False, 'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        # except Exception as e:
+        #     return Response({'status': False, 'message': e},
+        #                     status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class LoginUser(APIView):
