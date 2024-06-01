@@ -101,7 +101,7 @@ class VerifyOtp(APIView):
         except UserProfile.DoesNotExist:
             return Response({'status': False, 'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response({'status': False, 'message': 'An error occurred while verifying OTP'},
+            return Response({'status': False, 'message': e},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
