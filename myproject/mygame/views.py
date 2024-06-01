@@ -88,7 +88,7 @@ class VerifyOtp(APIView):
         email = request.data.get('email')
 
         try:
-            otp_obj = EmailOtp.objects.get(email=email)
+            # otp_obj = EmailOtp.objects.get(email=email)
             generate_otp_and_send_email(email=email)
         except EmailOtp.DoesNotExist:
             return Response({'status': False, 'message': 'OTP not found'}, status=status.HTTP_404_NOT_FOUND)
