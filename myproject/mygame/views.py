@@ -5,7 +5,8 @@ from .serializers import *
 from .helpers import *
 import random, string
 from decimal import Decimal
-
+import logging
+logger = logging.getLogger('myapp')
 
 # Create your views here.
 class RegisterUser(APIView):
@@ -44,6 +45,7 @@ class RegisterUser(APIView):
                                 status=status.HTTP_200_OK)
             # generate_otp_and_send_email(email=email)
             print('an')
+            logger.info('Successfully added likes to posts')
 
             otp_obj = EmailOtp.objects.filter(email=email).last()
 
@@ -89,7 +91,10 @@ class VerifyOtp(APIView):
         email = request.data.get('email')
 
         try:
+
+            logger.info('success enter otp')
             generate_otp_and_send_email(email=email)
+            logger.info('success otp')
             return Response({'status': True, 'message': 'OTP Sent'}, status=status.HTTP_200_OK)
         except EmailOtp.DoesNotExist:
             return Response({'status': False, 'message': 'OTP not found'}, status=status.HTTP_404_NOT_FOUND)
