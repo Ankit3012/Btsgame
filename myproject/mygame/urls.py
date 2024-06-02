@@ -13,7 +13,7 @@ urlpatterns = [
 
     # Admin
     path('bts_login/',LoginUser.as_view(),name='bts_login'),
-    path('admin_profile/',AdminProfile.as_view(),name='admin_profile'),
+    path('admin_profile/',AdminProfileList.as_view(),name='admin_profile'),
 
 
 ]

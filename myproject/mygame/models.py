@@ -7,6 +7,13 @@ from django.conf import settings
 import uuid
 from django.urls import reverse
 
+class Base(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
 
 class EmailOtp(models.Model):
     email = models.CharField(max_length=200)
@@ -16,14 +23,6 @@ class EmailOtp(models.Model):
 
     def __str__(self):
         return str(self.email) + 'is sent' + (str(self.otp))
-
-
-class Base(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        abstract = True
 
 
 class MyAccountManager(BaseUserManager):
@@ -125,13 +124,13 @@ class UserProfile(AbstractBaseUser):
         }
 
 
-class AdminProfile(AbstractBaseUser):
-    email = models.EmailField(verbose_name="email", max_length=200, unique=True, null=True, blank=True)
+class AdminProfile(models.Model):
+    email = models.EmailField(verbose_name="admin_email", max_length=200, unique=True, null=True, blank=True)
     username = models.CharField(max_length=500, unique=True)
     password = models.CharField(max_length=200, null=True, blank=True)
     phone = models.CharField(max_length=20, null=True, unique=True)
-    date_joined = models.DateTimeField(verbose_name='date joined', auto_now_add=True)
-    last_login = models.DateTimeField(verbose_name='last login', auto_now=True)
+    date_joined = models.DateTimeField(verbose_name='date_joined', auto_now_add=True)
+    last_login = models.DateTimeField(verbose_name='last_login', auto_now=True)
 
     # All these field are required for custom user model
     is_admin = models.BooleanField(default=False)
@@ -159,11 +158,6 @@ class AdminProfile(AbstractBaseUser):
     referral_wallet = models.DecimalField(max_digits=12, decimal_places=3, null=False, blank=False, default=0)
     terms_privacy = models.BooleanField(default=False)
 
-    objects = MyAccountManager()
-
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['email', 'phone']
-
     def save(self, *args, **kwargs):
         if not self.id:  # Check if the object is being created for the first time
             last_user = AdminProfile.objects.last()
@@ -178,24 +172,6 @@ class AdminProfile(AbstractBaseUser):
             return f'{str(self.id)}  |  {self.full_name} '
         except:
             return "_"
-
-    # For checking permissions. to keep it simple all admin have ALL permissons
-    def has_perm(self, perm, obj=None):
-        return self.is_admin
-
-    # Does this user have permission to view this app? (ALWAYS YES FOR SIMPLICITY)
-    def has_module_perms(self, app_label):
-        return True
-
-    def user_roles(self):
-        return " | ".join([str(ur) for ur in self.user_role.all()])
-
-    def tokens(self):
-        refresh = RefreshToken.for_user(self)
-        return {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token)
-        }
 
 
 class Lottery(models.Model):
