@@ -281,12 +281,36 @@ class Profile(APIView):
     def get(self, request):
         user_id = self.request.query_params.get('user')
         user_transaction = self.request.query_params.get('transaction')
+        if user_id:
 
-        if user_transaction == 'true':
-            all = Transaction.objects.filter(user_id=user_id).first()
-            serializer = TransactionSerializer(all)
+            if user_transaction == 'true':
+                all = Transaction.objects.filter(user_id=user_id).first()
+                serializer = TransactionSerializer(all)
+                return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+
+            user = UserProfile.objects.get(id=user_id)
+            serializer = ProfileSerializer(user)
+            return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+        else:
+            user = UserProfile.objects.all()
+            serializer = ProfileSerializer(user,many=True)
             return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
 
-        user = UserProfile.objects.get(id=user_id)
-        serializer = ProfileSerializer(user)
-        return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+class AdminProfile(APIView):
+    def get(self, request):
+        user_id = self.request.query_params.get('user')
+        user_transaction = self.request.query_params.get('transaction')
+        if user_id:
+
+            if user_transaction == 'true':
+                all = Transaction.objects.filter(user_id=user_id).first()
+                serializer = TransactionSerializer(all)
+                return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+
+            user = AdminProfile.objects.get(id=user_id)
+            serializer = ProfileSerializer(user)
+            return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+        else:
+            user = AdminProfile.objects.all()
+            serializer = AdminProfileSerializer(user,many=True)
+            return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)

@@ -24,6 +24,11 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = '__all__'
 
+class AdminProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AdminProfile
+        fields = '__all__'
+
 
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
