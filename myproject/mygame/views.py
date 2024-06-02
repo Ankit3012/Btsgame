@@ -27,6 +27,7 @@ class RegisterUser(APIView):
             phone = data.get('phone')
             email = data.get('email')
             otp = data.get('otp')
+            refer_code = data.get('refer_code')
             fullname = data.get('fullname')
             profile_pic = request.FILES.get('image', None)
 
@@ -46,30 +47,27 @@ class RegisterUser(APIView):
             if user_email:
                 return Response({'error': True, 'status': False, 'message': "User already exists!"},
                                 status=status.HTTP_200_OK)
-            # generate_otp_and_send_email(email=email)
 
-            # otp_obj = EmailOtp.objects.filter(email=email).last()
-            #
-            # if not otp_obj:
-            #     return Response({'status': False, 'message': 'OTP '}, status=status.HTTP_400_BAD_REQUEST)
-            # print(otp_obj)
-            # if int(otp) != int(otp_obj.otp):
-            #     return Response({'status': False, 'message': 'Wrong OTP'}, status=status.HTTP_400_BAD_REQUEST)
-            # else:
-            #     otp_obj = EmailOtp.objects.filter(email=email).last()
-            #
-            #     otp_obj.delete()
-            # Create new user profile
-            if int(otp) != 2222:
+            otp_obj = EmailOtp.objects.filter(email=email).last()
+
+            if not otp_obj:
+                return Response({'status': False, 'message': 'OTP Not sent'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if int(otp) != int(otp_obj.otp):
                 return Response({'status': False, 'message': 'Wrong OTP'}, status=status.HTTP_400_BAD_REQUEST)
             else:
+                otp_obj = EmailOtp.objects.filter(email=email).last()
+
+                otp_obj.delete()
+
                 user = UserProfile.objects.create(
                     full_name=fullname,
                     phone=phone,
                     username=username,  # Assuming 'phone' is the username
                     email=email,
                     is_active=True,
-                    profile_pic=profile_pic
+                    profile_pic=profile_pic,
+                    parent_referral=refer_code
                 )
             user.set_password(data.get('password'))
             user.save()
@@ -93,24 +91,17 @@ class RegisterUser(APIView):
 class VerifyOtp(APIView):
     def post(self, request):
         email = request.data.get('email')
-        logger.info('success enter otp')
-        generate_otp_and_send_email(email=email)
-        logger.info('success otp')
-        return Response({'status': True, 'message': 'OTP Sent'}, status=status.HTTP_200_OK)
 
-        # try:
-        #
-        #     logger.info('success enter otp')
-        #     generate_otp_and_send_email(email=email)
-        #     logger.info('success otp')
-        #     return Response({'status': True, 'message': 'OTP Sent'}, status=status.HTTP_200_OK)
-        # except EmailOtp.DoesNotExist:
-        #     return Response({'status': False, 'message': 'OTP not found'}, status=status.HTTP_404_NOT_FOUND)
-        # except UserProfile.DoesNotExist:
-        #     return Response({'status': False, 'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-        # except Exception as e:
-        #     return Response({'status': False, 'message': e},
-        #                     status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        try:
+            generate_otp_and_send_email(email=email)
+            return Response({'status': True, 'message': 'OTP Sent'}, status=status.HTTP_200_OK)
+        except EmailOtp.DoesNotExist:
+            return Response({'status': False, 'message': 'OTP not found'}, status=status.HTTP_404_NOT_FOUND)
+        except UserProfile.DoesNotExist:
+            return Response({'status': False, 'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'status': False, 'message': e},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class LoginUser(APIView):
@@ -119,7 +110,12 @@ class LoginUser(APIView):
         password = request.data.get('password')
 
         try:
-            user = UserProfile.objects.get(email=email)
+            if '@' in email:
+                user = UserProfile.objects.get(email=email)
+
+            else:
+                user = UserProfile.objects.get(phone=email)
+
             if not user.check_password(password):
                 return Response({'error': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)
             else:
@@ -146,7 +142,7 @@ class LotteryCreate(APIView):
     def post(self, request):
         Lottery.objects.create(
             start_time=timezone.now(),
-            end_time=timezone.now() + timezone.timedelta(minutes=2)
+            end_time=timezone.now() + timezone.timedelta(minutes=3)
         )
         return Response({'message': 'Lottery Created successfully'}, status=status.HTTP_201_CREATED)
 
