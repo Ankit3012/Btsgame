@@ -27,14 +27,13 @@ class RegisterUser(APIView):
             phone = data.get('phone')
             email = data.get('email')
             otp = data.get('otp')
-            refer_code = data.get('refer_code')
+            refer_code = data.get('refer_code', None)
             fullname = data.get('fullname')
             profile_pic = request.FILES.get('image', None)
 
             username = self.generate_username()
             email = str(email).lower()
             user_phone = UserProfile.objects.filter(phone=phone).first()
-            # print(user_phone)
 
             if user_phone:
                 # If user is active, return user already exists
