@@ -6,7 +6,9 @@ from .helpers import *
 import random, string
 from decimal import Decimal
 import logging
+
 logger = logging.getLogger('myapp')
+
 
 # Create your views here.
 class RegisterUser(APIView):
@@ -44,21 +46,22 @@ class RegisterUser(APIView):
                 return Response({'error': True, 'status': False, 'message': "User already exists!"},
                                 status=status.HTTP_200_OK)
             # generate_otp_and_send_email(email=email)
-            print('an')
-            logger.info('Successfully added likes to posts')
 
-            otp_obj = EmailOtp.objects.filter(email=email).last()
-
-            if not otp_obj:
-                return Response({'status': False, 'message': 'OTP '}, status=status.HTTP_400_BAD_REQUEST)
-            print(otp_obj)
-            if int(otp) != int(otp_obj.otp):
+            # otp_obj = EmailOtp.objects.filter(email=email).last()
+            #
+            # if not otp_obj:
+            #     return Response({'status': False, 'message': 'OTP '}, status=status.HTTP_400_BAD_REQUEST)
+            # print(otp_obj)
+            # if int(otp) != int(otp_obj.otp):
+            #     return Response({'status': False, 'message': 'Wrong OTP'}, status=status.HTTP_400_BAD_REQUEST)
+            # else:
+            #     otp_obj = EmailOtp.objects.filter(email=email).last()
+            #
+            #     otp_obj.delete()
+            # Create new user profile
+            if int(otp) != 2222:
                 return Response({'status': False, 'message': 'Wrong OTP'}, status=status.HTTP_400_BAD_REQUEST)
             else:
-                otp_obj = EmailOtp.objects.filter(email=email).last()
-
-                otp_obj.delete()
-                # Create new user profile
                 user = UserProfile.objects.create(
                     full_name=fullname,
                     phone=phone,
@@ -67,13 +70,13 @@ class RegisterUser(APIView):
                     is_active=True,
                     profile_pic=profile_pic
                 )
-                user.set_password(data.get('password'))
-                user.save()
+            user.set_password(data.get('password'))
+            user.save()
 
-                serializer = UserRegisterSerializer(user)
+            serializer = UserRegisterSerializer(user)
 
-                return Response({'success': True, 'data': serializer.data, 'message': "Successfully Registered!"},
-                                status=status.HTTP_201_CREATED)
+            return Response({'success': True, 'data': serializer.data, 'message': "Successfully Registered!"},
+                            status=status.HTTP_201_CREATED)
 
         except KeyError as e:
             raise ValidationError(f"Missing required field: {e}")
@@ -136,24 +139,6 @@ class LoginUser(APIView):
             'refresh': str(refresh),
             'access': str(refresh.access_token),
         }
-
-
-# class LoginUser(APIView):
-#     def post(self, request):
-#         email = request.data.get('email')
-#         password = request.data.get('password')
-#         user = UserProfile.objects.get(email=email)
-#
-#         def getTokensForUser(user):
-#             refresh = RefreshToken.for_user(user)
-#             return {
-#                 'refresh': str(refresh),
-#                 'access': str(refresh.access_token),
-#             }
-#
-#         tokens = getTokensForUser(user)
-#         return Response({'refresh': str(tokens.get('refresh')), 'access': str(tokens.get('access')),
-#                          "Success": "Login successfully"}, status=status.HTTP_200_OK)
 
 
 class LotteryCreate(APIView):
@@ -248,7 +233,7 @@ class LotteryResultAPI(APIView):
         if winning_tickets.exists():
             total_prize = Decimal(lottery.total_revenue) * Decimal(0.9)
             admin = AdminProfile.objects.filter(is_superuser=True).first()  # find admin on top
-            admin.main_wallet += Decimal(lottery.total_revenue) * Decimal(0.1) # add 10% on admin wallet
+            admin.main_wallet += Decimal(lottery.total_revenue) * Decimal(0.1)  # add 10% on admin wallet
             admin.save()
 
             prize_per_ticket = total_prize / winning_tickets.count()
