@@ -12,7 +12,7 @@ urlpatterns = [
     path('lottery_history/',LotteryTransaction.as_view(),name='lottery_history'),
 
     # Admin
-    path('bts_login/',LoginUser.as_view(),name='bts_login'),
+    path('admin_login/',AdminLoginUser.as_view(),name='admin_login'),
     path('admin_profile/',AdminProfileList.as_view(),name='admin_profile'),
 
 

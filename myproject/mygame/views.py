@@ -121,7 +121,7 @@ class LoginUser(APIView):
                 if user.is_active:
                     tokens = self.get_tokens_for_user(user)
                     return Response(
-                        {'refresh': tokens['refresh'], 'access': tokens['access'], 'message': 'Login successful'},
+                        {'refresh': tokens['refresh'], 'message': 'Login successful'},
                         status=status.HTTP_200_OK)
                 else:
                     return Response({'error': 'User is inactive'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -134,6 +134,42 @@ class LoginUser(APIView):
         return {
             'refresh': str(refresh),
             'access': str(refresh.access_token),
+        }
+
+
+# Admin Login
+
+class AdminLoginUser(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        password = request.data.get('password')
+
+        try:
+            if '@' in email:
+                user = AdminProfile.objects.get(email=email)
+
+            else:
+                user = AdminProfile.objects.get(phone=email)
+            db_password = user.password
+
+            if str(password) != str(db_password):
+                return Response({'error': 'Invalid Admin email or password'}, status=status.HTTP_401_UNAUTHORIZED)
+            else:
+                if user.is_active:
+                    tokens = self.get_tokens_for_user(user)
+                    return Response(
+                        {'refresh': tokens['refresh'], 'message': 'Admin Login successful'},
+                        status=status.HTTP_200_OK)
+                else:
+                    return Response({'error': 'Admin is inactive'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        except UserProfile.DoesNotExist:
+            return Response({'error': 'Admin not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    def get_tokens_for_user(self, user):
+        refresh = RefreshToken.for_user(user)
+        return {
+            'refresh': str(refresh),
         }
 
 
