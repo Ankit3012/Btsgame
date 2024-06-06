@@ -7,6 +7,7 @@ from django.conf import settings
 import uuid
 from django.urls import reverse
 
+
 class Base(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -178,12 +179,37 @@ class Lottery(models.Model):
     lottery_code = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
+    lottery_time = models.CharField(max_length=200, null=False, blank=False, default=3)
+    lottery_price = models.CharField(max_length=200, null=False, blank=False, default=10)
     is_active = models.BooleanField(default=True)
     total_revenue = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     tickets_remaining = models.IntegerField(default=100)
 
     def __str__(self):
         return f"Lottery ({self.start_time} - {self.end_time})"
+
+
+class GameDetails(Base):
+    game_name = models.CharField(max_length=200, null=False, blank=False, default='lottery')
+    lottery_time = models.CharField(max_length=200, null=False, blank=False, default=3)
+    lottery_price = models.CharField(max_length=200, null=False, blank=False, default=10)
+    comp_revenue = models.CharField(max_length=200, null=False, blank=False, default=10)
+    user_revenue = models.CharField(max_length=200, null=False, blank=False, default=90)
+    referal_per = models.CharField(max_length=200, null=False, blank=False, default=10)
+
+    def __str__(self):
+        return f"Lottery ({self.lottery_time} - {self.lottery_price})"
+
+
+class Support(Base):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='user_support')
+    description = models.CharField(max_length=2000, null=True, blank=True)
+    image = models.ImageField(blank=True, null=True)
+    resolve = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Support Ticket user {self.user.full_name}"
 
 
 class LotteryTicket(models.Model):
@@ -198,7 +224,8 @@ class LotteryTicket(models.Model):
 
 class Transaction(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='user_transaction')
-    lottery = models.ForeignKey(Lottery, on_delete=models.SET_NULL, null=True, blank=True, related_name='transaction_lottery')
+    lottery = models.ForeignKey(Lottery, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='transaction_lottery')
     lottery_code = models.CharField(max_length=2000, blank=True, null=True)
     balance = models.DecimalField(max_digits=12, decimal_places=2)
     revenue = models.DecimalField(max_digits=12, decimal_places=2)
@@ -209,3 +236,32 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"Transaction {self.id} - User: {self.user.username}"
+
+
+class AdminTransaction(Base):
+    user = models.ForeignKey(AdminProfile, on_delete=models.CASCADE, related_name='admin_transaction')
+    game_name = models.CharField(max_length=2000, blank=True, null=True)
+    game_code = models.CharField(max_length=2000, blank=True, null=True)
+    balance = models.DecimalField(max_digits=12, decimal_places=2)
+    revenue = models.DecimalField(max_digits=12, decimal_places=2)
+    debit = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    credit = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    description = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Admin Transaction {self.id} - User: {self.user.username} - game: {self.game_name}"
+
+    class LotteryHistory(Base):
+        user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='lottery_history')
+        lottery_code = models.CharField(max_length=2000, blank=True, null=True)
+
+        balance = models.DecimalField(max_digits=12, decimal_places=2)
+        revenue = models.DecimalField(max_digits=12, decimal_places=2)
+        debit = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+        credit = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+        description = models.CharField(max_length=255)
+        created_at = models.DateTimeField(auto_now_add=True)
+
+        def __str__(self):
+            return f"Transaction {self.id} - User: {self.user.username}"

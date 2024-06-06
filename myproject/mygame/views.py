@@ -7,6 +7,7 @@ import random, string
 from decimal import Decimal
 import logging
 from .models import *
+from time import sleep
 
 logger = logging.getLogger('myapp')
 
@@ -174,12 +175,72 @@ class AdminLoginUser(APIView):
 
 
 class LotteryCreate(APIView):
+
+    def get(self, request):
+        lottery = Lottery.objects.filter(is_active=True).first()
+        if not lottery:
+            return Response({'error': 'No active lottery found'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = LotterySerializer(lottery)
+        return Response(serializer.data)
+
     def post(self, request):
-        Lottery.objects.create(
-            start_time=timezone.now(),
-            end_time=timezone.now() + timezone.timedelta(minutes=3)
-        )
-        return Response({'message': 'Lottery Created successfully'}, status=status.HTTP_201_CREATED)
+        try:
+            lottery = Lottery.objects.filter(is_active=True).first()
+            if lottery:
+                time_remaining = (lottery.end_time - timezone.now()).total_seconds()
+                if time_remaining > 0:
+                    return Response({'time_remaining': time_remaining, 'message': 'Lottery still running'},
+                                    status=status.HTTP_200_OK)
+            elif not lottery:
+                Lottery.objects.all().delete()
+                game_time = GameDetails.objects.get(game_name='lottery')
+                Lottery.objects.create(
+                    start_time=timezone.now(),
+                    end_time=timezone.now() + timezone.timedelta(minutes=int(game_time.lottery_time))
+                )
+                sleep(180)  # Delay for 3 minutes
+                lottery = Lottery.objects.filter(is_active=True).first()
+                winning_number = random.randint(1, 9)
+                winning_tickets = LotteryTicket.objects.filter(lottery=lottery, number=winning_number)
+                print(winning_tickets)
+
+                if winning_tickets.exists():
+                    total_prize = Decimal(lottery.total_revenue) * Decimal(float(game_time.user_revenue))
+                    admin = AdminProfile.objects.filter(is_superuser=True).first()  # find admin on top
+                    admin.main_wallet += Decimal(lottery.total_revenue) * Decimal(float(game_time.user_revenue))  # add 10% on admin wallet
+                    admin.save()
+
+                    prize_per_ticket = total_prize / winning_tickets.count()
+
+                    for ticket in winning_tickets:
+                        user = ticket.user
+                        user.main_wallet += prize_per_ticket
+                        user.save()
+
+                        # Create a transaction record for the winning user
+                        Transaction.objects.create(
+                            user=user,
+                            lottery=lottery,
+                            lottery_code=lottery.lottery_code,
+                            balance=user.main_wallet,
+                            revenue=lottery.total_revenue,
+                            credit=prize_per_ticket,
+                            description=f"No. {winning_number} Lottery wins - Your Ticket id is {ticket.id}"
+                        )
+                else:
+                    admin = AdminProfile.objects.filter(is_superuser=True).first()
+                    admin.main_wallet += lottery.total_revenue
+                    admin.save()
+                print(lottery.lottery_code)
+
+                lottery.delete()
+                return Response({'message': f'Lottery Ended and Result is {winning_number}'}, status=status.HTTP_201_CREATED)
+            else:
+                return Response({'error': 'No lottery found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class LotteryAPI(APIView):
@@ -215,6 +276,17 @@ class LotteryAPI(APIView):
         if user.main_wallet < total_cost:
             return Response({'error': 'Insufficient balance in main wallet'},
                             status=status.HTTP_400_BAD_REQUEST)
+        user.main_wallet -= total_cost
+        user.save()
+        Transaction.objects.create(
+            user=user,
+            lottery=lottery,
+            lottery_code=lottery.lottery_code,
+            balance=user.main_wallet,
+            revenue=lottery.total_revenue,
+            debit=total_cost,
+            description=f"Purchased lottery Ticket, Lottery id: {lottery.lottery_code}"
+        )
         # if user.main_wallet <10
         for number in numbers.split(','):
             ticket = LotteryTicket.objects.create(
@@ -231,6 +303,7 @@ class LotteryAPI(APIView):
 
 class LotteryTimerAPI(APIView):
     def get(self, request):
+        print(type(0.9))
         lottery = Lottery.objects.filter(is_active=True).first()
         if not lottery:
             return Response({'error': 'No active lottery found'}, status=status.HTTP_404_NOT_FOUND)
@@ -242,64 +315,64 @@ class LotteryTimerAPI(APIView):
         return Response({'time_remaining': time_remaining}, status=status.HTTP_200_OK)
 
 
-class LotteryResultAPI(APIView):
-
-    def post(self, request):
-        lottery = Lottery.objects.filter(is_active=True).first()
-        if not lottery:
-            return Response({'error': 'No active lottery found'}, status=status.HTTP_404_NOT_FOUND)
-
-        if lottery.end_time > timezone.now():
-            return Response({'error': 'Lottery is still active'}, status=status.HTTP_400_BAD_REQUEST)
-
-        winning_number = request.data.get('winning_number')
-        if not winning_number:
-            winning_number = random.randint(1, 9)
-
-        if int(winning_number) < 1 or int(winning_number) > 9:
-            return Response({'error': 'Invalid winning number'}, status=status.HTTP_400_BAD_REQUEST)
-
-        winning_tickets = LotteryTicket.objects.filter(lottery=lottery, number=winning_number)
-        print(winning_tickets)
-
-        if winning_tickets.exists():
-            total_prize = Decimal(lottery.total_revenue) * Decimal(0.9)
-            admin = AdminProfile.objects.filter(is_superuser=True).first()  # find admin on top
-            admin.main_wallet += Decimal(lottery.total_revenue) * Decimal(0.1)  # add 10% on admin wallet
-            admin.save()
-
-            prize_per_ticket = total_prize / winning_tickets.count()
-
-            for ticket in winning_tickets:
-                user = ticket.user
-                user.main_wallet += prize_per_ticket
-                user.save()
-
-                # Create a transaction record for the winning user
-                Transaction.objects.create(
-                    user=user,
-                    lottery=lottery,
-                    lottery_code=lottery.lottery_code,
-                    balance=user.main_wallet,
-                    revenue=lottery.total_revenue,
-                    credit=prize_per_ticket,
-                    description=f"No. {winning_number} Lottery wins - Your Ticket id is {ticket.id}"
-                )
-        else:
-            admin = AdminProfile.objects.filter(is_superuser=True).first()
-            admin.main_wallet += lottery.total_revenue
-            admin.save()
-        print(lottery.lottery_code)
-
-        lottery.delete()
-
-        Lottery.objects.create(
-            start_time=timezone.now(),
-            end_time=timezone.now() + timezone.timedelta(minutes=2)
-        )
-
-        return Response({'message': f'Lottery result declared {winning_number} and next lottery started'},
-                        status=status.HTTP_200_OK)
+# class LotteryResultAPI(APIView):
+#
+#     def post(self, request):
+#         lottery = Lottery.objects.filter(is_active=True).first()
+#         if not lottery:
+#             return Response({'error': 'No active lottery found'}, status=status.HTTP_404_NOT_FOUND)
+#
+#         if lottery.end_time > timezone.now():
+#             return Response({'error': 'Lottery is still active'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         winning_number = request.data.get('winning_number')
+#         if not winning_number:
+#             winning_number = random.randint(1, 9)
+#
+#         if int(winning_number) < 1 or int(winning_number) > 9:
+#             return Response({'error': 'Invalid winning number'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         winning_tickets = LotteryTicket.objects.filter(lottery=lottery, number=winning_number)
+#         print(winning_tickets)
+#
+#         if winning_tickets.exists():
+#             total_prize = Decimal(lottery.total_revenue) * Decimal(0.9)
+#             admin = AdminProfile.objects.filter(is_superuser=True).first()  # find admin on top
+#             admin.main_wallet += Decimal(lottery.total_revenue) * Decimal(0.1)  # add 10% on admin wallet
+#             admin.save()
+#
+#             prize_per_ticket = total_prize / winning_tickets.count()
+#
+#             for ticket in winning_tickets:
+#                 user = ticket.user
+#                 user.main_wallet += prize_per_ticket
+#                 user.save()
+#
+#                 # Create a transaction record for the winning user
+#                 Transaction.objects.create(
+#                     user=user,
+#                     lottery=lottery,
+#                     lottery_code=lottery.lottery_code,
+#                     balance=user.main_wallet,
+#                     revenue=lottery.total_revenue,
+#                     credit=prize_per_ticket,
+#                     description=f"No. {winning_number} Lottery wins - Your Ticket id is {ticket.id}"
+#                 )
+#         else:
+#             admin = AdminProfile.objects.filter(is_superuser=True).first()
+#             admin.main_wallet += lottery.total_revenue
+#             admin.save()
+#         print(lottery.lottery_code)
+#
+#         lottery.delete()
+#
+#         Lottery.objects.create(
+#             start_time=timezone.now(),
+#             end_time=timezone.now() + timezone.timedelta(minutes=2)
+#         )
+#
+#         return Response({'message': f'Lottery result declared {winning_number} and next lottery started'},
+#                         status=status.HTTP_200_OK)
 
 
 class LotteryTransaction(APIView):
@@ -316,8 +389,8 @@ class Profile(APIView):
         if user_id:
 
             if user_transaction == 'true':
-                all = Transaction.objects.filter(user_id=user_id).first()
-                serializer = TransactionSerializer(all)
+                all = Transaction.objects.filter(user_id=user_id)
+                serializer = TransactionSerializer(all, many=True)
                 return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
 
             user = UserProfile.objects.get(id=user_id)
@@ -334,3 +407,18 @@ class AdminProfileList(APIView):
         admin_profiles = AdminProfile.objects.all()
         serializer = AdminProfileSerializer(admin_profiles, many=True)
         return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+
+
+class SupportViewSet(APIView):
+    def get(self,request):
+        report = Support.objects.filter(resolve=False, is_active= True)
+        serializer = SupportSerializer(report, many=True)
+        return Response({'status':True, 'data':serializer.data}, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        serializer = SupportSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            user = serializer.validated_data.pop('user')
+            support = Support.objects.create(**serializer.validated_data, user=user)
+            return Response({'status': True}, status=status.HTTP_201_CREATED)
+        return Response({'status': False}, status=status.HTTP_400_BAD_REQUEST)

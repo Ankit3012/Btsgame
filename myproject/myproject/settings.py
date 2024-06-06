@@ -58,6 +58,8 @@ X_FRAME_OPTIONS = 'SAMEORIGIN'
 CUSTOM_APPS = [
     'mygame',
     'colorbts',
+    'django_crontab',
+
 ]
 
 INSTALLED_APPS += CUSTOM_APPS
@@ -125,6 +127,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+CRONJOBS = [
+    ('*/1 * * * *', 'myproject.mygame.cron.call_lottery_result_api'),  # every minute for testing purposes
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
@@ -180,6 +185,7 @@ CSRF_COOKIE_SECURE = True
 CSRF_TRUSTED_ORIGINS = ["https://gamebts.com"]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 
 # LOGGING = {
 #     'version': 1,

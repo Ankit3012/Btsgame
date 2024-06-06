@@ -24,10 +24,24 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = '__all__'
 
+
 class AdminProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdminProfile
         fields = '__all__'
+
+
+class SupportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Support
+        fields = ['id', 'user', 'description', 'image', 'resolve', 'is_active']
+        read_only_fields = ['resolve', 'is_active']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        print(validated_data)
+        support = Support.objects.create(user=user, **validated_data)
+        return support
 
 
 class TransactionSerializer(serializers.ModelSerializer):
