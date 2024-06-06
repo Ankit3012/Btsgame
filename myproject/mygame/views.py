@@ -91,9 +91,10 @@ class RegisterUser(APIView):
 class VerifyOtp(APIView):
     def post(self, request):
         email = request.data.get('email')
+        user = request.data.get('user')
 
         try:
-            generate_otp_and_send_email(email=email)
+            generate_otp_and_send_email(email=email, user= user)
             return Response({'status': True, 'message': 'OTP Sent'}, status=status.HTTP_200_OK)
         except EmailOtp.DoesNotExist:
             return Response({'status': False, 'message': 'OTP not found'}, status=status.HTTP_404_NOT_FOUND)
