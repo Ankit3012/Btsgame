@@ -50,6 +50,12 @@ class TransactionSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class LotteryHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LotteryHistory
+        fields = '__all__'
+
+
 class LotteryTransactionSerializer(serializers.ModelSerializer):
     lottery_code = serializers.CharField(source='lottery.lottery_code')
 
