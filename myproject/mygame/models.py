@@ -219,7 +219,7 @@ class LotteryTicket(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Ticket {self.id} - Lottery {self.lottery.id}"
+        return f"Ticket {self.id} - Lottery {self.number}"
 
 
 class Transaction(models.Model):
@@ -252,16 +252,11 @@ class AdminTransaction(Base):
     def __str__(self):
         return f"Admin Transaction {self.id} - User: {self.user.username} - game: {self.game_name}"
 
-    class LotteryHistory(Base):
-        user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='lottery_history')
-        lottery_code = models.CharField(max_length=2000, blank=True, null=True)
+class LotteryHistory(Base):
+    lottery_code = models.CharField(max_length=2000, blank=True, null=True)
+    total_bet = models.CharField(max_length=2000, blank=True, null=True)
+    result = models.CharField(max_length=20, blank=True, null=True)
 
-        balance = models.DecimalField(max_digits=12, decimal_places=2)
-        revenue = models.DecimalField(max_digits=12, decimal_places=2)
-        debit = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-        credit = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-        description = models.CharField(max_length=255)
-        created_at = models.DateTimeField(auto_now_add=True)
 
-        def __str__(self):
-            return f"Transaction {self.id} - User: {self.user.username}"
+    def __str__(self):
+        return f"Transaction {self.lottery_code} - User: {self.result}"

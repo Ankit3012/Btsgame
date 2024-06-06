@@ -208,8 +208,11 @@ class LotteryCreate(APIView):
 
                 if winning_tickets.exists():
                     total_prize = Decimal(lottery.total_revenue) * Decimal(float(game_time.user_revenue))
-                    admin = AdminProfile.objects.filter(is_superuser=True).first()  # find admin on top
-                    admin.main_wallet += Decimal(lottery.total_revenue) * Decimal(float(game_time.user_revenue))  # add 10% on admin wallet
+                    print('game_time.user_revenue:',game_time.user_revenue)
+                    admin = AdminProfile.objects.filter(is_superuser=True).first()
+                    company_commission = Decimal(lottery.total_revenue) * Decimal(float(game_time.comp_revenue))
+                    print('game_time.comp_revenue:',game_time.comp_revenue)
+                    admin.main_wallet += company_commission
                     admin.save()
 
                     prize_per_ticket = total_prize / winning_tickets.count()
@@ -229,10 +232,31 @@ class LotteryCreate(APIView):
                             credit=prize_per_ticket,
                             description=f"No. {winning_number} Lottery wins - Your Ticket id is {ticket.id}"
                         )
+
                 else:
                     admin = AdminProfile.objects.filter(is_superuser=True).first()
-                    admin.main_wallet += lottery.total_revenue
+                    company_commission = lottery.total_revenue
+                    admin.main_wallet += company_commission
                     admin.save()
+
+                AdminTransaction.objects.create(
+                    user=admin,
+                    game_name='Lottery',
+                    game_code=lottery.lottery_code,
+                    balance=admin.main_wallet,
+                    revenue=lottery.total_revenue,
+                    credit=company_commission,
+                    description=f"Rs. {company_commission} has been credited from {lottery.lottery_code} this lottery."
+                )
+
+                LotteryHistory.objects.create(
+
+                    lottery_code=lottery.lottery_code,
+                    total_bet=lottery.total_revenue,
+                    result=winning_number
+                    )
+
+
                 print(lottery.lottery_code)
 
                 lottery.delete()
