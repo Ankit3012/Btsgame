@@ -8,6 +8,7 @@ from decimal import Decimal
 import logging
 from .models import *
 from time import sleep
+from django.contrib.auth.hashers import make_password
 
 logger = logging.getLogger('myapp')
 
@@ -91,10 +92,15 @@ class RegisterUser(APIView):
 class VerifyOtp(APIView):
     def post(self, request):
         email = request.data.get('email')
-        user = request.data.get('user')
+        forget = request.data.get('forget')
+        if forget == 'true':
+            user = UserProfile.objects.get(email=email).full_name
+            generate_otp_forget(email=email, user=user)
+            return Response({'status': True, 'message': 'Forget OTP Sent'}, status=status.HTTP_200_OK)
 
         try:
-            generate_otp_and_send_email(email=email, user= user)
+            user = request.data.get('user')
+            generate_otp_and_send_email(email=email, user=user)
             return Response({'status': True, 'message': 'OTP Sent'}, status=status.HTTP_200_OK)
         except EmailOtp.DoesNotExist:
             return Response({'status': False, 'message': 'OTP not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -103,6 +109,33 @@ class VerifyOtp(APIView):
         except Exception as e:
             return Response({'status': False, 'message': e},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ForgetPassword(APIView):
+    def post(self,request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+        new_password = request.data.get('password')
+        user = UserProfile.objects.get(email=email)
+        #
+        otp_obj = EmailOtp.objects.filter(email=email).last()
+
+        if not otp_obj:
+            return Response({'status': False, 'message': 'OTP Not sent'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if int(otp) != int(otp_obj.otp):
+            return Response({'status': False, 'message': 'Wrong OTP'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            otp_obj = EmailOtp.objects.filter(email=email).last()
+
+            # Update the password
+            user.password = make_password(new_password)
+            user.save()
+
+            # Delete the OTP object
+            otp_obj.delete()
+
+            return Response({'status': True, 'message': 'Password updated successfully'}, status=status.HTTP_200_OK)
 
 
 class LoginUser(APIView):
@@ -398,6 +431,11 @@ class SupportViewSet(APIView):
 
 class LotteryHistoryViewSet(APIView):
     def get(self,request):
+        result = self.request.query_params.get('result')
+        if result == 'last':
+            num = LotteryHistory.objects.last().result
+            return Response({'status': True, 'data': num}, status=status.HTTP_200_OK)
+
         report = LotteryHistory.objects.all().order_by('-id')
         serializer = LotteryHistorySerializer(report, many=True)
         return Response({'status':True, 'data':serializer.data}, status=status.HTTP_200_OK)

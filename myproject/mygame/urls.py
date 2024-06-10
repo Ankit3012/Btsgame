@@ -8,6 +8,7 @@ urlpatterns = [
     path('ticket_create/',LotteryAPI.as_view(),name='ticket-create'),
     path('lottery_timer/',LotteryTimerAPI.as_view(),name='lottery-timer'),
     path('lottery_history/',LotteryHistoryViewSet.as_view(),name='lottery_history'),
+    path('forget_password/',ForgetPassword.as_view(),name='forget_password'),
     # path('lottery_result/',LotteryResultAPI.as_view(),name='lottery-result'),
     path('profile/',Profile.as_view(),name='profile'),
     path('lottery_user_history/',LotteryTransaction.as_view(),name='lottery_user_history'),
