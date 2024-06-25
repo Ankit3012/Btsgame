@@ -23,17 +23,24 @@ class RegisterUser(APIView):
             if not UserProfile.objects.filter(username=username).exists():
                 return username
 
+    def generate_refer_code(self, fullname):
+        length = 10  # You can adjust the length of the username as needed
+        while True:
+            refer_code = ''.join(random.choices(fullname + string.ascii_lowercase + string.digits, k=length))
+            if not UserProfile.objects.filter(refer_code=refer_code).exists():
+                return refer_code
+
     def post(self, request):
         try:
             data = request.data
             phone = data.get('phone')
             email = data.get('email')
-            otp = data.get('otp')
-            refer_code = data.get('refer_code', None)
+            parent_refer_code = data.get('refer_code', 'BTS786')
             fullname = data.get('fullname')
-            profile_pic = request.FILES.get('image', None)
+            profile_pic = request.FILES.get('image', 'unknown_user.png')
 
             username = self.generate_username()
+            refer_code = self.generate_refer_code(fullname)
             email = str(email).lower()
             user_phone = UserProfile.objects.filter(phone=phone).first()
 
@@ -48,28 +55,19 @@ class RegisterUser(APIView):
             if user_email:
                 return Response({'error': True, 'status': False, 'message': "User already exists!"},
                                 status=status.HTTP_200_OK)
-
-            otp_obj = EmailOtp.objects.filter(email=email).last()
-
-            if not otp_obj:
-                return Response({'status': False, 'message': 'OTP Not sent'}, status=status.HTTP_400_BAD_REQUEST)
-
-            if int(otp) != int(otp_obj.otp):
-                return Response({'status': False, 'message': 'Wrong OTP'}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                otp_obj = EmailOtp.objects.filter(email=email).last()
-
-                otp_obj.delete()
-
-                user = UserProfile.objects.create(
-                    full_name=fullname,
-                    phone=phone,
-                    username=username,  # Assuming 'phone' is the username
-                    email=email,
-                    is_active=True,
-                    profile_pic=profile_pic,
-                    parent_referral=refer_code
-                )
+            otp = generate_otp_and_send_email(email, data.get('fullname'))
+            if not otp:
+                return Response({'status': False, 'message': 'OTP not sent'}, status=status.HTTP_400_BAD_REQUEST)
+            user = UserProfile.objects.create(
+                full_name=fullname,
+                phone=phone,
+                username=username,  # Assuming 'phone' is the username
+                email=email,
+                is_active=False,
+                profile_pic=profile_pic,
+                refer_code=refer_code,
+                parent_referral=parent_refer_code,
+            )
             user.set_password(data.get('password'))
             user.save()
 
@@ -92,27 +90,36 @@ class RegisterUser(APIView):
 class VerifyOtp(APIView):
     def post(self, request):
         email = request.data.get('email')
-        forget = request.data.get('forget')
-        if forget == 'true':
-            user = UserProfile.objects.get(email=email).full_name
-            generate_otp_forget(email=email, user=user)
-            return Response({'status': True, 'message': 'Forget OTP Sent'}, status=status.HTTP_200_OK)
+        otp = request.data.get('otp')
 
-        try:
-            user = request.data.get('user')
-            generate_otp_and_send_email(email=email, user=user)
-            return Response({'status': True, 'message': 'OTP Sent'}, status=status.HTTP_200_OK)
-        except EmailOtp.DoesNotExist:
-            return Response({'status': False, 'message': 'OTP not found'}, status=status.HTTP_404_NOT_FOUND)
-        except UserProfile.DoesNotExist:
+        if not email or not otp:
+            return Response({'status': False, 'message': 'Email and OTP are required'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Fetch the latest OTP for the given email
+        otp_obj = EmailOtp.objects.filter(email=email).last()
+
+        if not otp_obj:
+            return Response({'status': False, 'message': 'OTP not sent'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if int(otp) != int(otp_obj.otp):
+            return Response({'status': False, 'message': 'Wrong OTP'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # OTP is correct, activate the user and delete the OTP record
+        user = UserProfile.objects.filter(email=email).first()
+        if not user:
             return Response({'status': False, 'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({'status': False, 'message': e},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        user.is_active = True
+        user.save()
+
+        otp_obj.delete()
+
+        return Response({'status': True, 'message': 'User Successfully Registered'}, status=status.HTTP_200_OK)
 
 
 class ForgetPassword(APIView):
-    def post(self,request):
+    def post(self, request):
         email = request.data.get('email')
         otp = request.data.get('otp')
         new_password = request.data.get('password')
@@ -241,10 +248,10 @@ class LotteryCreate(APIView):
 
                 if winning_tickets.exists():
                     total_prize = Decimal(lottery.total_revenue) * Decimal(float(game_time.user_revenue))
-                    print('game_time.user_revenue:',game_time.user_revenue)
+                    print('game_time.user_revenue:', game_time.user_revenue)
                     admin = AdminProfile.objects.filter(is_superuser=True).first()
                     company_commission = Decimal(lottery.total_revenue) * Decimal(float(game_time.comp_revenue))
-                    print('game_time.comp_revenue:',game_time.comp_revenue)
+                    print('game_time.comp_revenue:', game_time.comp_revenue)
                     admin.main_wallet += company_commission
                     admin.save()
 
@@ -287,18 +294,17 @@ class LotteryCreate(APIView):
                     lottery_code=lottery.lottery_code,
                     total_bet=lottery.total_revenue,
                     result=winning_number
-                    )
-
+                )
 
                 print(lottery.lottery_code)
 
                 lottery.delete()
-                return Response({'message': f'Lottery Ended and Result is {winning_number}'}, status=status.HTTP_201_CREATED)
+                return Response({'message': f'Lottery Ended and Result is {winning_number}'},
+                                status=status.HTTP_201_CREATED)
             else:
                 return Response({'error': 'No lottery found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 class LotteryAPI(APIView):
@@ -415,10 +421,10 @@ class AdminProfileList(APIView):
 
 
 class SupportViewSet(APIView):
-    def get(self,request):
-        report = Support.objects.filter(resolve=False, is_active= True)
+    def get(self, request):
+        report = Support.objects.filter(resolve=False, is_active=True)
         serializer = SupportSerializer(report, many=True)
-        return Response({'status':True, 'data':serializer.data}, status=status.HTTP_200_OK)
+        return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
         serializer = SupportSerializer(data=request.data, context={'request': request})
@@ -430,7 +436,7 @@ class SupportViewSet(APIView):
 
 
 class LotteryHistoryViewSet(APIView):
-    def get(self,request):
+    def get(self, request):
         result = self.request.query_params.get('result')
         if result == 'last':
             num = LotteryHistory.objects.last().result
@@ -438,4 +444,4 @@ class LotteryHistoryViewSet(APIView):
 
         report = LotteryHistory.objects.all().order_by('-id')
         serializer = LotteryHistorySerializer(report, many=True)
-        return Response({'status':True, 'data':serializer.data}, status=status.HTTP_200_OK)
+        return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)

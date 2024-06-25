@@ -80,7 +80,6 @@ MIDDLEWARE = [
     'django.middleware.locale.LocaleMiddleware',
 ]
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # register silk for debugging is ON_DEVELOPMENT is enable
 # try:
