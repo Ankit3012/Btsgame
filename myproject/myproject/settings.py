@@ -55,6 +55,10 @@ INSTALLED_APPS = [
 
 ]
 
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+]
+
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 CUSTOM_APPS = [
