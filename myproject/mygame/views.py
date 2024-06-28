@@ -214,6 +214,10 @@ class AdminLoginUser(APIView):
             'refresh': str(refresh),
         }
 
+class LotteryCreate2(APIView):
+    def post(self, request):
+        sleep(180)  # Delay for 3 minutes
+        return Response({'data':'run'})
 
 class LotteryCreate(APIView):
 
@@ -248,14 +252,14 @@ class LotteryCreate(APIView):
 
                 winning_number = random.randint(1, 9)
                 winning_tickets = LotteryTicket.objects.filter(lottery=lottery, number=winning_number)
-                print(winning_tickets)
+                # print(winning_tickets)
 
                 if winning_tickets.exists():
                     total_prize = Decimal(lottery.total_revenue) * Decimal(float(game_time.user_revenue))
-                    print('game_time.user_revenue:', game_time.user_revenue)
+                    # print('game_time.user_revenue:', game_time.user_revenue)
                     admin = AdminProfile.objects.filter(is_superuser=True).first()
                     company_commission = Decimal(lottery.total_revenue) * Decimal(float(game_time.comp_revenue))
-                    print('game_time.comp_revenue:', game_time.comp_revenue)
+                    # print('game_time.comp_revenue:', game_time.comp_revenue)
                     admin.main_wallet += company_commission
                     admin.save()
 
@@ -299,7 +303,7 @@ class LotteryCreate(APIView):
                     result=winning_number
                 )
 
-                print(lottery.lottery_code)
+                # print(lottery.lottery_code)
 
                 lottery.delete()
                 return Response({'message': f'Lottery Ended and Result is {winning_number}'},
