@@ -233,7 +233,7 @@ class LotteryCreate(APIView):
                 if time_remaining > 0:
                     return Response({'time_remaining': time_remaining, 'message': 'Lottery still running'},
                                     status=status.HTTP_200_OK)
-            elif not lottery:
+            else:
                 Lottery.objects.all().delete()
                 game_time = GameDetails.objects.get(game_name='lottery')
                 Lottery.objects.create(
@@ -242,6 +242,10 @@ class LotteryCreate(APIView):
                 )
                 sleep(180)  # Delay for 3 minutes
                 lottery = Lottery.objects.filter(is_active=True).first()
+                if not lottery:
+                    return Response({'error': 'Failed to create a new lottery.'},
+                                    status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
                 winning_number = random.randint(1, 9)
                 winning_tickets = LotteryTicket.objects.filter(lottery=lottery, number=winning_number)
                 print(winning_tickets)
@@ -290,7 +294,6 @@ class LotteryCreate(APIView):
                 )
 
                 LotteryHistory.objects.create(
-
                     lottery_code=lottery.lottery_code,
                     total_bet=lottery.total_revenue,
                     result=winning_number
@@ -301,10 +304,98 @@ class LotteryCreate(APIView):
                 lottery.delete()
                 return Response({'message': f'Lottery Ended and Result is {winning_number}'},
                                 status=status.HTTP_201_CREATED)
-            else:
-                return Response({'error': 'No lottery found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# class LotteryCreate(APIView):
+#
+#     def get(self, request):
+#         lottery = Lottery.objects.filter(is_active=True).first()
+#         if not lottery:
+#             return Response({'error': 'No active lottery found'}, status=status.HTTP_404_NOT_FOUND)
+#
+#         serializer = LotterySerializer(lottery)
+#         return Response(serializer.data)
+#
+#     def post(self, request):
+#         try:
+#             lottery = Lottery.objects.filter(is_active=True).first()
+#             if lottery:
+#                 time_remaining = (lottery.end_time - timezone.now()).total_seconds()
+#                 if time_remaining > 0:
+#                     return Response({'time_remaining': time_remaining, 'message': 'Lottery still running'},
+#                                     status=status.HTTP_200_OK)
+#             elif not lottery:
+#                 Lottery.objects.all().delete()
+#                 game_time = GameDetails.objects.get(game_name='lottery')
+#                 Lottery.objects.create(
+#                     start_time=timezone.now(),
+#                     end_time=timezone.now() + timezone.timedelta(minutes=int(game_time.lottery_time))
+#                 )
+#                 sleep(180)  # Delay for 3 minutes
+#                 lottery = Lottery.objects.filter(is_active=True).first()
+#                 winning_number = random.randint(1, 9)
+#                 winning_tickets = LotteryTicket.objects.filter(lottery=lottery, number=winning_number)
+#                 print(winning_tickets)
+#
+#                 if winning_tickets.exists():
+#                     total_prize = Decimal(lottery.total_revenue) * Decimal(float(game_time.user_revenue))
+#                     print('game_time.user_revenue:', game_time.user_revenue)
+#                     admin = AdminProfile.objects.filter(is_superuser=True).first()
+#                     company_commission = Decimal(lottery.total_revenue) * Decimal(float(game_time.comp_revenue))
+#                     print('game_time.comp_revenue:', game_time.comp_revenue)
+#                     admin.main_wallet += company_commission
+#                     admin.save()
+#
+#                     prize_per_ticket = total_prize / winning_tickets.count()
+#
+#                     for ticket in winning_tickets:
+#                         user = ticket.user
+#                         user.main_wallet += prize_per_ticket
+#                         user.save()
+#
+#                         # Create a transaction record for the winning user
+#                         Transaction.objects.create(
+#                             user=user,
+#                             lottery=lottery,
+#                             lottery_code=lottery.lottery_code,
+#                             balance=user.main_wallet,
+#                             revenue=lottery.total_revenue,
+#                             credit=prize_per_ticket,
+#                             description=f"No. {winning_number} Lottery wins - Your Ticket id is {ticket.id}"
+#                         )
+#
+#                 else:
+#                     admin = AdminProfile.objects.filter(is_superuser=True).first()
+#                     company_commission = lottery.total_revenue
+#                     admin.main_wallet += company_commission
+#                     admin.save()
+#
+#                 AdminTransaction.objects.create(
+#                     user=admin,
+#                     game_name='Lottery',
+#                     game_code=lottery.lottery_code,
+#                     balance=admin.main_wallet,
+#                     revenue=lottery.total_revenue,
+#                     credit=company_commission,
+#                     description=f"Rs. {company_commission} has been credited from {lottery.lottery_code} this lottery."
+#                 )
+#
+#                 LotteryHistory.objects.create(
+#
+#                     lottery_code=lottery.lottery_code,
+#                     total_bet=lottery.total_revenue,
+#                     result=winning_number
+#                 )
+#
+#                 print(lottery.lottery_code)
+#
+#                 lottery.delete()
+#                 return Response({'message': f'Lottery Ended and Result is {winning_number}'},
+#                                 status=status.HTTP_201_CREATED)
+#             else:
+#                 return Response({'error': 'No lottery found'}, status=status.HTTP_404_NOT_FOUND)
+#         except Exception as e:
+#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class LotteryAPI(APIView):
